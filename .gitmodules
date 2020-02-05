@@ -1,1 +1,5 @@
 
+[submodule "public"]
+	path = public
+	url = git@github.com:wooduk/wooduk.github.io.git
+	branch = master

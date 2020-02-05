@@ -1,0 +1,37 @@
+baseurl = "https://wooduk.github.io/"
+languageCode = "en-gb"
+title = "Stephen Wood"
+theme = "hugo-creative-portfolio-theme"
+
+
+[params]
+  # Style options: default (pink), blue, green, pink, red, sea, violet
+  # Use custom.css for your custom styling
+style = "sea"
+description = "Personal Website"
+copyright = "&copy;2019 Stephen Wood"
+sidebarAbout = [
+   "My work involves programming, data analysis, and critical thinking. This is my web page.",
+ ]
+ email = "you@yoursite.com"
+
+# Nav links in the side bar
+  [[params.navlinks]]
+  name = "Home"
+  url = "portfolio/"
+  home = true
+
+  [[params.navlinks]]
+  name = "About"
+  url = "about/"
+
+  [[params.navlinks]]
+  name = "Get in touch"
+  url = "contact/"
+
+[params.social]
+  github = "<username>"
+  linkedin = "<username>"
+  medium = "<username>"
+  twitter = "<username>"
+  
