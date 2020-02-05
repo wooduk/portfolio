@@ -1,17 +1,15 @@
 +++
-image = "img/portfolio/altair.png"
+image = "img/portfolio/gcloud-fridge.jpg"
 showonlyimage = false
 date = "2016-11-05T19:44:32+05:30"
 title = "Tutorial: JupyterLab Analytics on Google Cloud Platform"
 draft = false
-weight = 0
+weight = 1
 +++
 
 The $300 worth of credits seemed like a good reason to try out Google Cloud Platform for my prototype analytics stack. This is tutorial on how to set that up.
 
 <!--more-->
-
-![create project image](/img/portfolio/create_new_project.png)
 
 This post describes what I did to get JupyterLab up and running on GCP. If I’ve done something stupid, please let me know.
 
@@ -160,3 +158,5 @@ So if I want to create a new VM (perhaps with upgraded specs) I can select the i
 ![boot_disk.png](/img/portfolio/boot_disk.png)
 
 That was fun. Let’s see how quickly I burn through those credits!
+
+Cover Photo by Mitchell Luo on Unsplash

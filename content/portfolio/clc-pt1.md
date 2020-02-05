@@ -1,7 +1,7 @@
 +++
 showonlyimage = false
 draft = false
-image = "/img/portfolio/uk_2017_winner.png"
+image = "/img/portfolio/ukturnout.png"
 date = "2019-11-13T18:25:22+05:30"
 title = "Command-Line Cartography for a UK Election"
 weight = 0
@@ -10,14 +10,6 @@ weight = 0
 Create a map of the UK constituencies ready for election night.
 
 <!--more-->
-
-<div id="observablehq-ed48ea11"></div>
-<script type="module">
-import {Runtime, Inspector} from "https://cdn.jsdelivr.net/npm/@observablehq/runtime@4/dist/runtime.js";
-import define from "https://api.observablehq.com/@wooduk/us-elections-2018.js?v=3";
-const inspect = Inspector.into("#observablehq-ed48ea11");
-(new Runtime).module(define, name => (name === "cartogram") && inspect());
-</script>
 
 This tutorial adapts the steps from @mbostock’s Command-Line Cartography tutorial to show how to easily make a thematic map of UK election results using free open-source Javascript tools. This is what we will make in Part 1:
 

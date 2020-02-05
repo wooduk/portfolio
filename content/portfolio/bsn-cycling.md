@@ -1,7 +1,7 @@
 +++
 showonlyimage = false
 draft = false
-image = "/img/portfolio/bsn_map_1.png"
+image = "/img/portfolio/bsn_map_h.png"
 date = "2019-04-05T18:25:22+05:30"
 title = "Tutorial: Mapping cycling times to BSN Vlaskamp"
 weight = 0
@@ -12,6 +12,8 @@ My experiment in using Google Distance Matrix API and Observable Notebooks to ma
 <!--more-->
 
 This is a static copy of an [Observable notebook](https://observablehq.com/@wooduk/mapping-cycling-times-to-bsn-vlaskamp).
+
+
 
 ![Example image](/img/portfolio/bsn_map_1.png)
 *Figure 1: A heatmap overlaid on a leafletjs map to explore cycling times to BSN Vlaskamp campus. The heatmap is constructed by drawing a polygon for each postcode boundary and shading that area according to journey durations obtained from Google Distance Matrix API.*
