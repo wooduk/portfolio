@@ -9,9 +9,9 @@ theme = "hugo-creative-portfolio-theme"
   # Use custom.css for your custom styling
 style = "sea"
 description = "Personal Website"
-copyright = "&copy;2019 Stephen Wood"
+copyright = "&copy;2020 Stephen Wood"
 sidebarAbout = [
-   "My work involves programming, data analysis, and critical thinking. This is my web page.",
+   "My work involves Python and Javascript programming, data analysis, and critical thinking. This is my web page.",
  ]
  email = "you@yoursite.com"
 
