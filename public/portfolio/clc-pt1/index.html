@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en-gb">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Command-Line Cartography for a UK Election</title>
+<meta name="description" content="Personal Website">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="all,follow">
+<meta name="googlebot" content="index,follow,snippet,archive">
+<link rel="stylesheet" href="https://wooduk.github.io/css/bootstrap.min.css">
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto:400,300,700,400italic">
+<link rel="stylesheet" href="https://wooduk.github.io/css/font-awesome.min.css">
+<link rel="stylesheet" href="https://wooduk.github.io/css/owl.carousel.css">
+<link rel="stylesheet" href="https://wooduk.github.io/css/owl.theme.css">
+
+
+  <link href="https://wooduk.github.io/css/style.sea.css" rel="stylesheet" id="theme-stylesheet">
+
+ 
+
+  
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  
+
+
+<link href="https://wooduk.github.io/css/custom.css" rel="stylesheet">
+<link rel="shortcut icon" href="https://wooduk.github.io/img/favicon.png">
+
+
+</head>
+<body>
+  <div id="all">
+      <div class="container-fluid">
+          <div class="row row-offcanvas row-offcanvas-left">
+              <div id="sidebar" class="col-xs-6 col-sm-4 col-md-3 sidebar-offcanvas">
+  <div class="sidebar-content">
+    <h1 class="sidebar-heading"><a href="https://wooduk.github.io/">Stephen Wood</a></h1>
+    
+      <p class="sidebar-p">My work involves programming, data analysis, and critical thinking. This is my web page.</p>
+    
+    <ul class="sidebar-menu">
+      
+        <li><a href="https://wooduk.github.io/portfolio/">Home</a></li>
+      
+        <li><a href="https://wooduk.github.io/about/">About</a></li>
+      
+        <li><a href="https://wooduk.github.io/contact/">Get in touch</a></li>
+      
+    </ul>
+    <p class="social">
+  
+  
+  
+  <a href="%3cusername%3e" data-animate-hover="pulse" class="external twitter">
+    <i class="fa fa-twitter"></i>
+  </a>
+  
+  
+  
+  
+  <a href="%3cusername%3e" data-animate-hover="pulse" class="external">
+    <i class="fa fa-linkedin"></i>
+  </a>
+  
+  
+  
+  <a href="%3cusername%3e" data-animate-hover="pulse" class="external">
+    <i class="fa fa-github"></i>
+  </a>
+  
+  
+  
+</p>
+
+
+    <div class="copyright">
+      <p class="credit">
+        
+          &copy;2019 Stephen Wood |
+        
+        Template by <a href="https://bootstrapious.com/free-templates" class="external">Bootstrapious.com</a>
+
+&amp; ported to Hugo by <a href="https://github.com/kishaningithub">Kishan B</a>
+
+      </p>
+    </div>
+  </div>
+</div>
+
+              
+<div class="col-xs-12 col-sm-8 col-md-9 content-column white-background">
+  <div class="small-navbar visible-xs">
+  <button type="button" data-toggle="offcanvas" class="btn btn-ghost pull-left"> <i class="fa fa-align-left"> </i>Menu</button>
+  <h1 class="small-navbar-heading"><a href="https://wooduk.github.io/">Stephen Wood</a></h1>
+</div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="content-column-content">
+         <h1>Command-Line Cartography for a UK Election</h1>
+         <p>Create a map of the UK constituencies ready for election night.</p>
+
+<p>This tutorial adapts the steps from @mbostock’s Command-Line Cartography tutorial to show how to easily make a thematic map of UK election results using free open-source Javascript tools. This is what we will make in Part 1:</p>
+
+<p><img src="/img/portfolio/uk_maps/uk_2017_winner.png" alt="UK 2017 Winner Map" />
+<em>Figure 1: UK General Election 2017 results: Winners by constituency.</em></p>
+
+<p>The plan is to visualise the results of the last UK election by creating a map that colours each parliamentary constituency according to the party that gained the most votes. As a bonus we also visualise turnout.</p>
+
+<h2 id="getting-the-boundary-geometry">Getting the boundary geometry</h2>
+
+<p>The first step to creating our map is to get some polygons representing the constituency boundaries in the UK. The Ordinance Survey release the boundary-line product twice a year. I found a more convenient copy — for fetching with the command line — at mySociety.org</p>
+
+<pre><code>curl --progress-bar http://parlvid.mysociety.org/os/bdline_gb-2019-10.zip -O bdline_gb-2019-10.zip
+</code></pre>
+
+<p>The archive contains lots of different administrative boundaries and is quite large (hence I added the <code>--progress-bar</code> option). We need to extract only the Westminster constituency boundaries files for this chart.</p>
+
+<pre><code> unzip -o bdline_gb-2019-10.zip Data/GB/westminster_const_region.prj Data/GB/westminster_const_region.shp Data/GB/westminster_const_region.dbf Data/GB/westminster_const_region.shx
+</code></pre>
+
+<p>mv Data/GB/westminster_const_region.* .</p>
+
+<p>As suggested by @mbostock, visiting mapshaper.org and dragging the <code>westminster_const_region.shp</code> into your browser is a good way to preview what we’ve extracted:</p>
+
+<p><img src="/img/portfolio/uk_maps/uk_const_1.png" alt="UK 2017 Winner Map" />
+<em>Figure 2: UK Westminster constituencies in mapshaper.org</em></p>
+
+<p>Looks great, but the Northern Ireland constituencies are missing. Turns out these are available separately from the Ordnance Survey Northern Ireland:</p>
+
+<pre><code>wget http://osni-spatial-ni.opendata.arcgis.com/datasets/563dc2ec3d9943428e3fe68966d40deb_3.zip
+unzip 563dc2ec3d9943428e3fe68966d40deb_3.zip
+</code></pre>
+
+<h2 id="get-set-up">Get Set Up</h2>
+
+<p>We are going to use a series of Javascript command-line tools that Mike Bostock described in more detail in his tutorial. They can be installed using the following commands if you have not already [You’ll need node and npm installed for this next step to work]:</p>
+
+<pre><code>npm install -g shapefile          # gives us shp2json
+npm install -g d3-geo-projection  # geoproject, geo2svg
+npm install -g topojson           # geo2topo, topo2geo
+npm install -g ndjson-cli
+npm install -g d3
+</code></pre>
+
+<p>Use <em>shp2json</em> to convert the Shapefiles to GeoJSON:</p>
+
+<pre><code>shp2json westminster_const_region.shp -o gb.json
+</code></pre>
+
+<p>The Great Britain (GB) boundary file data is already projected onto the British National Grid (EPSG:27700). However the geometry data in the Northern Ireland (NI) boundaries are defined in EPSG:4326 (WSG 84). I tried to find a way to use d3-geo-projection to convert the NI geometry to EPSG:27700 but I have to admit it was beyond me. Instead I fell back to using ogr2ogr to transform the NI shapefile. I’m on MacOS so ogr2ogr can be installed using brew:</p>
+
+<pre><code>brew install gdal
+</code></pre>
+
+<p>Then I reprojected the Shapefile from EPSG:4326 to EPSG:27700 as follows:</p>
+
+<pre><code>ogr2ogr -f &quot;ESRI Shapefile&quot; ni.shp OSNI_Open_Data_Largescale_Boundaries__Parliamentary_Constituencies_2008.shp -t_srs EPSG:27700 -s_srs EPSG:4326
+</code></pre>
+
+<p>Then convert this Shapefile to GeoJSON as we with did with the GB boundaries previously:</p>
+
+<pre><code>shp2json ni.shp -o ni.json
+</code></pre>
+
+<h2 id="merging-the-gb-and-ni-geometry">Merging the GB and NI geometry</h2>
+
+<p>We have converted the binary shapefiles to more human readable GeoJSON. But we still have two separate files. It would be much more convenient to have all the boundaries together in one file.</p>
+
+<p>In part 2 of his tutorial, Mike introduces <code>ndjson-cli</code>, his tool for creating and manipulating newline-delimited JSON. I figured we could use this tool make our GeoJSON files into newline-delimited JSON and then simply cat them together. I also need to pull out the constituency identifier and make it common across each file using <code>ndjson-map</code>:</p>
+
+<pre><code>ndjson-split ‘d.features’ &lt; gb.json \
+| ndjson-map '{id: d.properties.CODE, properties:d.properties, type:d.type, geometry:d.geometry}' &gt; gb_id.ndjson
+</code></pre>
+
+<p>ndjson-split &rsquo;d.features&rsquo; &lt; ni.json <br />
+    | ndjson-map &lsquo;{id: d.properties.PC_ID, properties:d.properties, type:d.type, geometry:d.geometry}&rsquo; &gt; ni_id.ndjson
+cat gb_id.ndjson ni_id.ndjson &gt; uk.ndjson</p>
+
+<p>I tried working from this point forward with ndjson and streaming the geometry into <code>geoprojection</code> but this was not successful. I found it necessary to convert the concatenated boundaries back to a single JSON object using the <code>ndjson-reduce</code> command before continuing with projections:</p>
+
+<pre><code>ndjson-reduce 'p.features.push(d), p' '{type: &quot;FeatureCollection&quot;, features: []}' &lt; uk.ndjson &gt; uk.json
+</code></pre>
+
+<p>Great we have all the boundaries in one JSON file. However, this file is about 120M. Clearly these geometry definitions are more detailed than we need for a web based visualisation. To reduce the file size we can define a bounding box — in pixels — for our chart and then simplify the polygons appropriately for this box without noticeable loss of detail.</p>
+
+<p>Use the <code>geoproject</code> tool with the <code>.fitsize()</code> method of <code>d3.geoIdentity()</code> to map the points to a bounding box of our choosing [I also took the opportunity to flip the polygon definitions vertically as we will eventually render as svg]:</p>
+
+<pre><code>geoproject 'd3.geoTransform({point: function(x, y) { this.stream.point(x, -y); }})' &lt; uk.json \
+| geoproject 'd3.geoIdentity().fitSize([960, 960], d)'\
+&gt; uk-960.json
+</code></pre>
+
+<p>Now we can reduce the size of our GeoJSON file by switching to TopoJSON and then simplifying, quantising, and compressing the polygon definitions. Please read Part 3 of Mike Bostock’s tutorial for a more detailed explanation of these steps, which I copy below.</p>
+
+<p>I used <code>geo2topo</code> to convert to TopoJSON and then use the <code>toposimplify</code> and <code>topoquantize</code> tools to reduce file size from 120M to 385K:</p>
+
+<pre><code>geo2topo const=uk-960.json \
+| toposimplify -p 1 -f \
+| topoquantize 1e5 \
+&gt; uk-simpl-topo.json
+</code></pre>
+
+<p>Now let’s have a quick look at our output. To produce an svg at the command line we can use the <code>geo2svg</code> tools. First we do a conversion back to GeoJSON using <code>topo2geo</code>:</p>
+
+<pre><code>topo2geo const=- &lt; uk-simpl-topo.json \
+| geo2svg -p 1 -w 960 -h 960 &gt; uk.svg
+</code></pre>
+
+<h2 id="adding-election-results">Adding Election Results</h2>
+
+<p>So we have prepared our constituency boundaries. Now we want to shade these polygons according to some election results.
+I found a csv containing election results back to 1918 on the UK parliament website:</p>
+
+<pre><code>wget http://researchbriefings.files.parliament.uk/documents/CBP-8647/1918-2017election_results.csv -O 1918_2017election_results.csv
+</code></pre>
+
+<p>I used the command-line tool <code>gawk</code> to filter this csv to get just the 2017 results and fill in nulls with zeros. The tricky part was that some of the constituency names contained commas which needed to be ignored.</p>
+
+<pre><code>gawk -F ',' -v OFS=',' '{for (i=1;i&lt;=NF;i++) { if ($i==&quot;&quot;) $i=&quot;0&quot; }; print}' &lt; 1918_2017election_results.csv | gawk 'NR==1 {print}; { if ($18 == 2017) print}' FPAT='([^,]+)|(&quot;[^&quot;]+&quot;)' &gt; 2017_results.csv
+</code></pre>
+
+<p>Mike shows how to join data like this with the geometry by first converting to newline-delimited json. Following his example I used csv2json and his ndjson-cli tools to first convert the election results:</p>
+
+<pre><code>csv2json &lt; 2017_results.csv | tr -d '\n' | ndjson-split &gt; 2017_results.ndjson
+</code></pre>
+
+<p>Similarly we prepare our boundary geometry as ndjson:</p>
+
+<pre><code>topo2geo const=- &lt; uk-simpl-topo.json | \
+ndjson-split 'd.features' &gt; uk-simpl.ndjson
+</code></pre>
+
+<p>And join the two together:</p>
+
+<pre><code>ndjson-join 'd.id' 'd.constituency_id' uk-simpl.ndjson 2017_results.ndjson \
+| ndjson-map 'd[0].results = d[1], d[0]' \
+&gt; uk_2017_results.ndjson
+</code></pre>
+
+<p>Mike’s example is to colour the polygons of the map according to the value of population density in that area. The most similar quantity I have in the election results — i.e. a continuous quantity — is turnout. So in order to be able to follow his example I decided to make a Chloropleth using this turnout information before moving on to looking at winners.</p>
+
+<p>The code below uses ndjson-map to assign each feature (i.e. constituency) in the GeoJson with a property called <code>fill</code>. When we use <code>geo2svg</code> to produce our image it will pick up on this property and use it to colour the polygons appropriately. The value of fill needs to be a string containing the hex code of the colour that we want each polygon to be (e.g. <code>#0087dc</code>).</p>
+
+<pre><code>ndjson-map -r d3 'z = d3.scaleSequential(d3.interpolateViridis).domain([0.5, .8]), d.properties.fill = z(d.results[&quot;turnout &quot;]), d' &lt; uk_2017_results.ndjson \
+| geo2svg -n --stroke none -p 1 -w 960 -h 960 &gt; uk_2017_turnout.svg
+</code></pre>
+
+<p>It might be worth trying to break this one-liner down a bit to understand what is going on. We use d3 to translate the turnout information (a number between 0 and 1 representing the proportion of the electorate who actually voted in that constituency) into a hex code. The ndjson-map tool lets us step through each constituency and apply some kind of operation. The argument we pass to ndjson-map is three lines of Javascript.</p>
+
+<p>The second line:</p>
+
+<p>d.properties.fill = z(d.results[&ldquo;turnout &ldquo;])</p>
+
+<p>says that for each feature create a property called fill whose value is the output of a function z . That function z takes the value of turnout — which we already attached to the feature in our previous join — and returns a hexcode representing a colour. This z function is defined in the first line of Javascript:</p>
+
+<pre><code>z = d3.scaleSequential(d3.interpolateViridis).domain([0.5,0.8])
+</code></pre>
+
+<p>It uses d3’s colour schemes to transform numbers representing to turnout to an appropriate colour from the Viridis colour scheme. I inspected the values of turnout present in the election data in order to set bounds of domain so that as much of the colour scale could be used as possible.</p>
+
+<p>We can open that uk_2017_turnour.svg file in a browser:</p>
+
+<p><img src="/img/portfolio/uk_maps/uk_2017_turnout.png" alt="UK 2017 Turnout Map" />
+<em>Figure 3: A green and pleasant land: turnout in the 2017 UK General Election.</em></p>
+
+<p>The legend was created separately in an Observable notebook and copy-pasted into the svg file.</p>
+
+<h2 id="adapting-the-approach-to-plot-winners">Adapting the approach to plot winners</h2>
+
+<p>Really my goal for this tutorial was to create a map that shows the winners in each constituency. To do this we rework the last step to use <code>ndjson-map</code> to look for the party with the highest vote share then setting the geometry’s fill property to a colour representing the party.</p>
+
+<p>The Javascript I pass to <code>ndjson-map</code> feels a little more clunky here as I define an object that holds the lookup for the colour for each party.</p>
+
+<pre><code>ndjson-map -r d3 's={&quot;con_share&quot;:&quot;#0087dc&quot;, &quot;lib_share&quot;:&quot;#FDBB30&quot;, &quot;lab_share&quot;:&quot;#d50000&quot;, &quot;natSW_share&quot;:&quot;#3F8428&quot;, &quot;pld&quot;:&quot;#3F8428&quot;, &quot;oth_share&quot;:&quot;#aaaaaa&quot;}, u = ({ con_share, lab_share, lib_share, oth_share, natSW_share }) =&gt; ({ con_share, lab_share, lib_share, oth_share, natSW_share }), d.properties.fill = s[Object.keys(u(d.results)).reduce((a, b) =&gt; d.results[a] &gt; d.results[b] ? a : b)], d' &lt; uk_2017_results.ndjson \
+| geo2svg -n --stroke none -p 1 -w 960 -h 960 &gt; uk_2017_winner.svg
+</code></pre>
+
+<p>Again, breaking that javascript down a bit, the first line:</p>
+
+<pre><code>s={&quot;con_share&quot;:&quot;#0087dc&quot;, &quot;lib_share&quot;:&quot;#FDBB30&quot;, &quot;lab_share&quot;:&quot;#d50000&quot;, &quot;natSW_share&quot;:&quot;#3F8428&quot;, &quot;pld&quot;:&quot;#3F8428&quot;, &quot;oth_share&quot;:&quot;#aaaaaa&quot;}
+</code></pre>
+
+<p>simply defines a lookup from party to colour. The second line:</p>
+
+<pre><code>u = ({ con_share, lab_share, lib_share, oth_share, natSW_share }) =&gt; ({ con_share, lab_share, lib_share, oth_share, natSW_share })
+</code></pre>
+
+<p>Is a destructuring assignment which we use to extract the voteshare numbers from the election results object. Then the final line:</p>
+
+<pre><code>d.properties.fill = s[Object.keys(u(d.results)).reduce((a, b) =&gt; d.results[a] &gt; d.results[b] ? a : b)]
+</code></pre>
+
+<p>Finds the key of the party with the largest voteshare and uses this in the lookup object <code>s</code> to write the desired colour into the <code>fill</code> property.</p>
+
+<p>Taking a look at the result:</p>
+
+<p><img src="/img/portfolio/uk_maps/uk_2017_winner.png" alt="UK 2017 Winner Map" />
+<em>Figure 4: 2017 General Election UK results constituencies coloured by winner.</em></p>
+
+<p>So there we have it. Again a legend was created separately and pasted in to the svg text.
+Another day we can debate the merits of showing this data on a geographical map rather than, say, a cartogram that places equal area on the constituencies.</p>
+
+<p>In the second tutorial in this series I look at how the data munging part of this tutorial might be more easily achieved using a Python/GeoPandas stack.</p>
+
+<p>Thanks to @mbostock for all his tools and writings which are inspirational.</p>
+         
+      </div>
+    </div>
+  </div>
+</div>
+
+          </div>
+      </div>
+  </div>
+  <script src="https://wooduk.github.io/js/jquery.min.js"></script>
+<script src="https://wooduk.github.io/js/bootstrap.min.js"></script>
+<script src="https://wooduk.github.io/js/jquery.cookie.js"> </script>
+<script src="https://wooduk.github.io/js/ekko-lightbox.js"></script>
+<script src="https://wooduk.github.io/js/jquery.scrollTo.min.js"></script>
+<script src="https://wooduk.github.io/js/masonry.pkgd.min.js"></script>
+<script src="https://wooduk.github.io/js/imagesloaded.pkgd.min.js"></script>
+<script src="https://wooduk.github.io/js/owl.carousel.min.js"></script>
+<script src="https://wooduk.github.io/js/front.js"></script>
+
+
+
+</body>
+</html>

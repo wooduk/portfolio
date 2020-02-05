@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en-gb">
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Filtering LinkedIn Job Alerts with Serverless Python.</title>
+<meta name="description" content="Personal Website">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="all,follow">
+<meta name="googlebot" content="index,follow,snippet,archive">
+<link rel="stylesheet" href="https://wooduk.github.io/css/bootstrap.min.css">
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto:400,300,700,400italic">
+<link rel="stylesheet" href="https://wooduk.github.io/css/font-awesome.min.css">
+<link rel="stylesheet" href="https://wooduk.github.io/css/owl.carousel.css">
+<link rel="stylesheet" href="https://wooduk.github.io/css/owl.theme.css">
+
+
+  <link href="https://wooduk.github.io/css/style.sea.css" rel="stylesheet" id="theme-stylesheet">
+
+ 
+
+  
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  
+
+
+<link href="https://wooduk.github.io/css/custom.css" rel="stylesheet">
+<link rel="shortcut icon" href="https://wooduk.github.io/img/favicon.png">
+
+
+</head>
+<body>
+  <div id="all">
+      <div class="container-fluid">
+          <div class="row row-offcanvas row-offcanvas-left">
+              <div id="sidebar" class="col-xs-6 col-sm-4 col-md-3 sidebar-offcanvas">
+  <div class="sidebar-content">
+    <h1 class="sidebar-heading"><a href="https://wooduk.github.io/">Stephen Wood</a></h1>
+    
+      <p class="sidebar-p">My work involves programming, data analysis, and critical thinking. This is my web page.</p>
+    
+    <ul class="sidebar-menu">
+      
+        <li><a href="https://wooduk.github.io/portfolio/">Home</a></li>
+      
+        <li><a href="https://wooduk.github.io/about/">About</a></li>
+      
+        <li><a href="https://wooduk.github.io/contact/">Get in touch</a></li>
+      
+    </ul>
+    <p class="social">
+  
+  
+  
+  <a href="%3cusername%3e" data-animate-hover="pulse" class="external twitter">
+    <i class="fa fa-twitter"></i>
+  </a>
+  
+  
+  
+  
+  <a href="%3cusername%3e" data-animate-hover="pulse" class="external">
+    <i class="fa fa-linkedin"></i>
+  </a>
+  
+  
+  
+  <a href="%3cusername%3e" data-animate-hover="pulse" class="external">
+    <i class="fa fa-github"></i>
+  </a>
+  
+  
+  
+</p>
+
+
+    <div class="copyright">
+      <p class="credit">
+        
+          &copy;2019 Stephen Wood |
+        
+        Template by <a href="https://bootstrapious.com/free-templates" class="external">Bootstrapious.com</a>
+
+&amp; ported to Hugo by <a href="https://github.com/kishaningithub">Kishan B</a>
+
+      </p>
+    </div>
+  </div>
+</div>
+
+              
+<div class="col-xs-12 col-sm-8 col-md-9 content-column white-background">
+  <div class="small-navbar visible-xs">
+  <button type="button" data-toggle="offcanvas" class="btn btn-ghost pull-left"> <i class="fa fa-align-left"> </i>Menu</button>
+  <h1 class="small-navbar-heading"><a href="https://wooduk.github.io/">Stephen Wood</a></h1>
+</div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="content-column-content">
+         <h1>Filtering LinkedIn Job Alerts with Serverless Python.</h1>
+         <p>How I built myself a service that filters LinkedIn job alerts by description language.</p>
+
+<p><a href="https://levelup.gitconnected.com/filtering-linkedin-job-alerts-with-serverless-python-62bdd07cb81d">Original article on Medium</a></p>
+
+<p>I’m currently living in the Netherlands and looking for work. Rather pathetically, I don’t speak Dutch. (I should have said “I don’t yet speak Dutch” — there’s always hope, right?) Undeterred, I’ve set up email alerts for local jobs on LinkedIn. About a third of the alerts are for jobs that have descriptions written in English while the rest are in Dutch. My working assumption is that if the job description is in English then there’s a chance that they’ll speak English in the office and it’s worth finding out about it.</p>
+
+<p>One problem is that I can’t immediately find a way to filter the jobs I receive by the language of the job description¹. Often job titles are in English but the descriptions are in Dutch. I imagine this is a non-problem for most Dutch people given that their English is excellent. But, for me, the process of clicking through all the email links can be frustrating. I’d to be able to filter the job alerts based on the language of the description. For now, it would be good enough if I could forward the emails to somewhere and have a filtered list sent back.</p>
+
+<p>This post describes a solution I cobbled together along those lines over a weekend. In doing so I learnt how to use Amazon’s <a href="https://aws.amazon.com/ses/">SES</a> and <a href="https://aws.amazon.com/lambda/">Lambda</a> services. I also discovered a few useful Python packages that I hadn’t heard of before. There were a few mis-steps along the way and I hope by writing about them you will be able to avoid them (at the expense of long-windedness).</p>
+
+<p>I broke the job down into 4 tasks:
+ * Work out how to extract the job description URLs from the job alert email sent by LinkedIn.
+ * Get hold of the full job description and decide what language it is in.
+ * Construct an email containing a (filtered) list of jobs.
+ * Find out how to receive an email, do work on the content, and send it back.</p>
+
+<p>I started by tackling the most familiar tasks. You may be most interested in the part about linking AWS services together. In this case, skip to task 4.</p>
+
+<h2 id="task-1-work-out-how-to-parse-an-email-extract-the-urls-of-each-job-and-fetch-the-job-descriptions">Task 1: Work out how to parse an email, extract the urls of each job, and fetch the job descriptions.</h2>
+
+<p>I actually knew very little about emails other that you can request them in plain text sometimes. The emails I get from LinkedIn look like HTML. It turns out, of course, that there’s a venerable <a href="https://tools.ietf.org/html/rfc5322">standard format</a> for email.</p>
+
+<p>Using the ‘Show Original’ option from within GMail you can see or download the ‘raw’ email message in this format.</p>
+
+<figure>
+    <img src="/img/portfolio/1_H6hXzNgsNayRvhcLvnKBCQ.png"
+         alt="Using GMail’s ‘Show Original’ command to see the actual email as received."/> <figcaption>
+            <p><em>Using GMail’s ‘Show Original’ command to see the actual email as received.</em></p>
+        </figcaption>
+</figure>
+
+
+<p>The email from LinkedIn is a multipart <a href="https://en.wikipedia.org/wiki/MIME">MIME</a> message with two parts. Each part contains a list of jobs, first in plain text and then again in HTML. Each list contains the URL of the full job description on LinkedIn. It’s these URLs I want to extract from the email using Python. I soon discovered that the Python standard library has a package called <a href="https://docs.python.org/2/library/email.html#module-email"><code>email</code></a>. Loading an example email with this package gives me two <code>Message</code> objects with content types <code>['text/plain', 'text/html']</code>:</p>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">    <span style="color:#f92672">import</span> email
+
+    <span style="color:#66d9ef">with</span> open(<span style="color:#e6db74">&#39;sample_email.eml&#39;</span>,<span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> f:
+        e <span style="color:#f92672">=</span> email<span style="color:#f92672">.</span>message_from_file(f)<span style="color:#f92672">.</span>get_payload()
+
+    <span style="color:#66d9ef">print</span>([ms<span style="color:#f92672">.</span>get_content_type() <span style="color:#66d9ef">for</span> ms <span style="color:#f92672">in</span> e])</code></pre></div>
+
+<p>At first I thought it would be more robust to parse the HTML part with a library like <a href="https://lxml.de/">lxml</a>. But what a mess it was! To make their emails p̵r̵e̵t̵t̵y̵ / on-brand, email marketers have to embed all their CSS inline. This seems to be to the detriment of semantic meaning.</p>
+
+<p>Instead, I wrote a hacky snippet to extract URLs and other details from the plain text:</p>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">extract_jobs</span>(plain_text_body):
+	<span style="color:#e6db74">&#34;&#34;&#34;
+</span><span style="color:#e6db74">	Extract the title, company, location and job ids contained in message body
+</span><span style="color:#e6db74">	&#34;&#34;&#34;</span>
+	job_ids <span style="color:#f92672">=</span> [j<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;?&#39;</span>)[<span style="color:#ae81ff">0</span>] <span style="color:#66d9ef">for</span> j <span style="color:#f92672">in</span> plain_text_body<span style="color:#f92672">.</span>split(f<span style="color:#e6db74">&#39;View job: {LI_BASE_URL}&#39;</span>)[<span style="color:#ae81ff">1</span>:]]
+	job_meta <span style="color:#f92672">=</span> plain_text_body<span style="color:#f92672">.</span>split(f<span style="color:#e6db74">&#39;View job: {LI_BASE_URL}&#39;</span>)[<span style="color:#ae81ff">0</span>]<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">4</span>:<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+	jobs <span style="color:#f92672">=</span> [j[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">+</span> (j[<span style="color:#ae81ff">1</span>],) <span style="color:#66d9ef">for</span> j <span style="color:#f92672">in</span> zip(job_meta,job_ids)]
+	<span style="color:#66d9ef">return</span> jobs
+    </code></pre></div>
+
+<p><em>An update from the near-future</em>: In fact this wasn’t very robust at all and not because LinkedIn changed the message format. It works fine on the example email I had downloaded from GMail. But after I got everything linked together and tested it for real I received no jobs at all! It turns out that when you forward an email, GMail doesn’t send on that same original version that you see when you ‘Show Original’. Instead it sends a pre-processed version and this doesn’t preserve the formatting of the plain text part.</p>
+
+<p>I re-did the parser using <a href="https://docs.python.org/2/library/re.html">regular expressions</a> to find the job urls. This was probably a better approach all along:
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">    <span style="color:#f92672">import</span> re
+
+    LI_BASE_URL<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;https://www.linkedin.com/comm/jobs/view/&#39;</span>
+    
+    <span style="color:#75715e"># extract matching urls from the plain text of email message</span>
+    urls <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>findall(LI_BASE_URL<span style="color:#f92672">+</span>r<span style="color:#960050;background-color:#1e0010">”</span>\d<span style="color:#f92672">+</span><span style="color:#960050;background-color:#1e0010">”</span>, plain_text_body)
+    
+    <span style="color:#75715e"># extract the id numbers from the found urls</span>
+    job_ids <span style="color:#f92672">=</span> set([x<span style="color:#f92672">.</span>split(<span style="color:#960050;background-color:#1e0010">‘</span><span style="color:#f92672">/</span><span style="color:#960050;background-color:#1e0010">’</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>] <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> urls])</code></pre></div></p>
+
+<h2 id="task-2-get-hold-of-the-full-job-description-and-decide-what-language-it-is-in">Task 2. Get hold of the full job description and decide what language it is in.</h2>
+
+<p><em>Fetching the job description</em>. Armed with a list of job ids I can fetch the job description for each one and determine if it’s in English or not. I used two packages to do this: <code>requests</code> , <code>langdetect</code>, and <code>html</code> from the standard library.</p>
+
+<p><a href="https://requests.readthedocs.io/en/master/user/quickstart/">Requests</a> lets us fetch the job description from LinkedIn:</p>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> requests
+
+<span style="color:#75715e"># assume job_id is from above e.g. 1691926414</span>
+BASE_URL <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;https://www.linkedin.com/comm/jobs/view/&#39;</span>
+
+r <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>get(f<span style="color:#e6db74">&#39;{BASE_URL}{job_id}&#39;</span>)</code></pre></div>
+
+<p>As I wanted to keep the number of third-party libraries down I wrote a custom HTML parser using the Python standard library <a href="https://docs.python.org/3/library/html.parser.html"><code>html.parser</code></a>. This runs over the job description page and extracts the description and other meta data such as the job title, company, and location.</p>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">DescriptionParser</span>(HTMLParser):
+  <span style="color:#66d9ef">def</span> __init__(self):
+    HTMLParser<span style="color:#f92672">.</span>__init__(self)
+    self<span style="color:#f92672">.</span>recording_title <span style="color:#f92672">=</span> False
+    self<span style="color:#f92672">.</span>recording_desc <span style="color:#f92672">=</span> False
+    self<span style="color:#f92672">.</span>data <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#39;title&#39;</span>:<span style="color:#e6db74">&#39;&#39;</span>,<span style="color:#e6db74">&#39;description&#39;</span>:[]}
+
+  <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">handle_starttag</span>(self, tag, attributes):
+    <span style="color:#66d9ef">if</span> tag <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;title&#39;</span>:
+        self<span style="color:#f92672">.</span>recording_title <span style="color:#f92672">=</span> True
+    <span style="color:#66d9ef">elif</span> tag<span style="color:#f92672">==</span><span style="color:#e6db74">&#39;div&#39;</span>:
+        <span style="color:#66d9ef">for</span> name, value <span style="color:#f92672">in</span> attributes:
+            <span style="color:#66d9ef">if</span> name <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;class&#39;</span> <span style="color:#f92672">and</span> value <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;description__text description__text--rich&#39;</span>:
+                self<span style="color:#f92672">.</span>recording_desc <span style="color:#f92672">=</span> True
+    <span style="color:#66d9ef">else</span>:
+        <span style="color:#66d9ef">return</span>
+
+  <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">handle_endtag</span>(self, tag):
+    <span style="color:#75715e"># we only go one deep</span>
+    <span style="color:#66d9ef">if</span> tag<span style="color:#f92672">==</span><span style="color:#e6db74">&#39;div&#39;</span>:
+        self<span style="color:#f92672">.</span>recording_desc <span style="color:#f92672">=</span> False
+    <span style="color:#66d9ef">if</span> tag<span style="color:#f92672">==</span><span style="color:#e6db74">&#39;title&#39;</span>:
+        self<span style="color:#f92672">.</span>recording_title <span style="color:#f92672">=</span> False
+    <span style="color:#66d9ef">return</span>
+
+  <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">handle_data</span>(self, data):
+    
+    <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>recording_title:
+        self<span style="color:#f92672">.</span>data[<span style="color:#e6db74">&#39;title&#39;</span>]<span style="color:#f92672">=</span>data
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;title:&#39;</span>,data)
+    <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>recording_desc:
+       self<span style="color:#f92672">.</span>data[<span style="color:#e6db74">&#39;description&#39;</span>]<span style="color:#f92672">.</span>append(data)</code></pre></div>
+
+<p>The parser is invoked on the HTML response as follows:</p>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># create instance of parser</span>
+dp<span style="color:#f92672">=</span>DescriptionParser()
+<span style="color:#75715e"># feed it the HMTL from the email</span>
+dp<span style="color:#f92672">.</span>feed(r<span style="color:#f92672">.</span>text)
+<span style="color:#75715e"># access captured data from the parser instance</span>
+<span style="color:#75715e"># e.g.</span>
+title <span style="color:#f92672">=</span> dp<span style="color:#f92672">.</span>data<span style="color:#f92672">.</span>get(<span style="color:#e6db74">&#39;title&#39;</span>,<span style="color:#e6db74">&#39;No Title Found&#39;</span>)
+place <span style="color:#f92672">=</span> title<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; in &#39;</span>)[<span style="color:#ae81ff">1</span>]<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; | &#39;</span>)[<span style="color:#ae81ff">0</span>]
+job_title <span style="color:#f92672">=</span> title<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; hiring &#39;</span>)[<span style="color:#ae81ff">1</span>]<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; in &#39;</span>)[<span style="color:#ae81ff">0</span>]
+company <span style="color:#f92672">=</span> title<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; hiring&#39;</span>)[<span style="color:#ae81ff">0</span>]</code></pre></div>
+
+<p><strong>Detecting the language of the description.</strong></p>
+
+<p>I was about to go and make a call to 0800-Google Translate-API when I came across the awesome python package <a href="https://github.com/Mimino666/langdetect"><code>langdetect</code></a>. It apparently supports 55 languages out of the box. We can simply feed the text of the job description to the detect function and it will return the detected language.</p>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">from</span> langdetect <span style="color:#f92672">import</span> detect
+language <span style="color:#f92672">=</span> detect(dp<span style="color:#f92672">.</span>data[<span style="color:#e6db74">&#39;description&#39;</span>])</code></pre></div>
+
+<p>The job descriptions I receive are a mix of Dutch and English. I ran an unscientific test of the performance of <code>langdetect</code> by passing in a handful of example descriptions. It seemed to get it right all of the time. As nobody’s life is on the line here that’s good enough for me.</p>
+
+<p>So now all I need to do is wrap those last 3 parts into a loop that creates a list of only the jobs that have English descriptions. I hope this snippet is fairly self-explanatory:</p>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">filter_jobs</span>(job_ids, required_languages<span style="color:#f92672">=</span>[<span style="color:#e6db74">&#39;en&#39;</span>]):
+    <span style="color:#e6db74">&#34;&#34;&#34;
+</span><span style="color:#e6db74">    Filter the list of jobs to keep only those where job description is in the list of required languages.
+</span><span style="color:#e6db74">    &#34;&#34;&#34;</span>
+    filtered_jobs <span style="color:#f92672">=</span> []
+
+    <span style="color:#66d9ef">for</span> job_id <span style="color:#f92672">in</span> job_ids:
+        
+        job_url <span style="color:#f92672">=</span> f<span style="color:#e6db74">&#39;{LI_BASE_URL}{job_id}&#39;</span> 
+        r <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>get(job_url)
+
+        <span style="color:#66d9ef">if</span> r<span style="color:#f92672">.</span>ok:
+            dp<span style="color:#f92672">=</span>DescriptionParser()
+            dp<span style="color:#f92672">.</span>feed(r<span style="color:#f92672">.</span>text)
+            title <span style="color:#f92672">=</span> dp<span style="color:#f92672">.</span>data<span style="color:#f92672">.</span>get(<span style="color:#e6db74">&#39;title&#39;</span>,<span style="color:#e6db74">&#39;No Title Found&#39;</span>)
+            place <span style="color:#f92672">=</span> title<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; in &#39;</span>)[<span style="color:#ae81ff">1</span>]<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; | &#39;</span>)[<span style="color:#ae81ff">0</span>]
+            job_title <span style="color:#f92672">=</span> title<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; hiring &#39;</span>)[<span style="color:#ae81ff">1</span>]<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; in &#39;</span>)[<span style="color:#ae81ff">0</span>]
+            company <span style="color:#f92672">=</span> title<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; hiring&#39;</span>)[<span style="color:#ae81ff">0</span>]
+            <span style="color:#66d9ef">try</span>:
+                language <span style="color:#f92672">=</span> detect(<span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(dp<span style="color:#f92672">.</span>data[<span style="color:#e6db74">&#39;description&#39;</span>]))
+            <span style="color:#66d9ef">except</span>:
+                language <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;unknown&#39;</span>
+            <span style="color:#66d9ef">if</span> language <span style="color:#f92672">in</span> required_languages:
+                filtered_jobs <span style="color:#f92672">+=</span> [(job_title,company,place, job_url)]
+        <span style="color:#66d9ef">else</span>:
+            <span style="color:#75715e"># better luck next time, no retries</span>
+            <span style="color:#66d9ef">continue</span>
+
+    <span style="color:#66d9ef">return</span> filtered_jobs</code></pre></div>
+
+<h2 id="task-3-construct-an-email-of-the-filtered-jobs-to-send-back-to-myself">Task 3. Construct an email of the filtered jobs to send back to myself.</h2>
+
+<p>Now that I have the filtered job listings I need to construct an email to send back to myself. Let’s go for a MIME Multipart message in plaintext and HTML, like the one I received from LinkedIn. There were two parts to this task: building the plaintext and HTML message parts, and then wrapping these in a standard format email.</p>
+
+<p>The plaintext part was very simple. I concatenated the meta data and URLs of each job together as a string.</p>
+
+<p>To make the HTML part I found the helpful <a href="https://github.com/Knio/dominate"><code>dominate</code></a> package. After a few iterations, I decided to put the job list in a <code>&lt;table&gt;</code> element. I also feel I’ve given back to the email marketing community by including some inline css. ;-)</p>
+
+<p>This snippet shows a function to build these parts of the reply:</p>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">build_reply</span>(filtered_jobs,subject):
+
+    <span style="color:#75715e"># build a message in plain text and html to send back</span>
+    datefmt <span style="color:#f92672">=</span> datetime<span style="color:#f92672">.</span>now()<span style="color:#f92672">.</span>strftime(<span style="color:#e6db74">&#34;</span><span style="color:#e6db74">%d</span><span style="color:#e6db74"> %B %Y&#34;</span>)
+    salutation<span style="color:#f92672">=</span>f<span style="color:#e6db74">&#39;These are your filtered job alerts for {datefmt}&#39;</span>
+
+    plaintext_body <span style="color:#f92672">=</span> f<span style="color:#e6db74">&#39;Job Alerts</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">-------------</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{salutation}</span><span style="color:#ae81ff">\n\n</span><span style="color:#e6db74">&#39;</span>
+    plaintext_body <span style="color:#f92672">+=</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\r\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join([f<span style="color:#e6db74">&#34;{i+1}. {&#39;, &#39;.join(j)}&#34;</span> <span style="color:#66d9ef">for</span> i,j <span style="color:#f92672">in</span> enumerate(filtered_jobs)])
+    plaintext_body <span style="color:#f92672">+=</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">Thanks for using li-filter&#39;</span>
+
+    htmldoc <span style="color:#f92672">=</span> dominate<span style="color:#f92672">.</span>document(title<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;Job Alerts&#39;</span>)
+    htmldoc<span style="color:#f92672">.</span>add(body())<span style="color:#f92672">.</span>add(div(id<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;content&#39;</span>))
+
+    <span style="color:#75715e"># put the jobs in a table with links.</span>
+    clrs<span style="color:#f92672">=</span>[<span style="color:#e6db74">&#39;#ffffff&#39;</span>,<span style="color:#e6db74">&#39;#EEF7FA&#39;</span>]
+    <span style="color:#66d9ef">with</span> htmldoc<span style="color:#f92672">.</span>body:
+        h1(<span style="color:#e6db74">&#39;Job Alerts&#39;</span>)
+        p(subject<span style="color:#f92672">+</span>f<span style="color:#e6db74">&#34; on {datefmt}&#34;</span>)
+
+        head_style <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;background-color:#005b96;color:#ffffff;border:0;font-weight:bold&#34;</span>
+        cell_style <span style="color:#f92672">=</span> f<span style="color:#e6db74">&#34;border:0;padding:0.25em&#34;</span>
+        
+        <span style="color:#66d9ef">with</span> table(style<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;border-collapse: collapse;&#39;</span>)<span style="color:#f92672">.</span>add(thead([td(<span style="color:#e6db74">&#39;&#39;</span>,style<span style="color:#f92672">=</span>head_style),
+                                td(<span style="color:#e6db74">&#39;Job Title&#39;</span>,style<span style="color:#f92672">=</span>head_style), 
+                                td(<span style="color:#e6db74">&#39;Company&#39;</span>,style<span style="color:#f92672">=</span>head_style), 
+                                td(<span style="color:#e6db74">&#39;Place&#39;</span>,style<span style="color:#f92672">=</span>head_style), 
+                                td(<span style="color:#e6db74">&#39;Id&#39;</span>,style<span style="color:#f92672">=</span>head_style)]))<span style="color:#f92672">.</span>add(tbody()):
+            <span style="color:#66d9ef">for</span> i,job <span style="color:#f92672">in</span> enumerate(filtered_jobs):
+
+                row_style <span style="color:#f92672">=</span> f<span style="color:#e6db74">&#34;background-color:{clrs[i%2]};border:0&#34;</span>
+
+                trow <span style="color:#f92672">=</span> tr(style<span style="color:#f92672">=</span>row_style)
+                trow <span style="color:#f92672">+=</span> td(f<span style="color:#e6db74">&#39;{i+1}.&#39;</span>,style<span style="color:#f92672">=</span>cell_style)
+                trow <span style="color:#f92672">+=</span> td(job[<span style="color:#ae81ff">0</span>],style<span style="color:#f92672">=</span>cell_style)
+                trow <span style="color:#f92672">+=</span> td(job[<span style="color:#ae81ff">1</span>],style<span style="color:#f92672">=</span>cell_style)
+                trow <span style="color:#f92672">+=</span> td(job[<span style="color:#ae81ff">2</span>],style<span style="color:#f92672">=</span>cell_style)
+                trow <span style="color:#f92672">+=</span> td(a(job[<span style="color:#ae81ff">3</span>]<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;/&#39;</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>],href<span style="color:#f92672">=</span>job[<span style="color:#ae81ff">3</span>]),style<span style="color:#f92672">=</span>cell_style)
+                
+    <span style="color:#66d9ef">return</span> (plaintext_body, htmldoc)</code></pre></div>
+
+<p>My first attempt to wrap these messages into an email used the email package from the standard library. It was quite straightforward to follow the examples in the <a href="https://docs.python.org/3/library/email.examples.html">documentation</a>. But I ended up stripping that code out and using the boto3 API for creating and sending emails instead. We look at that part next.</p>
+
+<h2 id="task-4-find-out-how-to-receive-an-email-work-on-the-contents-and-send-one-back">Task 4: Find out how to receive an email work on the contents and send one back.</h2>
+
+<p>At the start of this post I described my general plan. This was to forward the job alert email to some python process for filtering. To enact this plan I need to be able to receive emails and feed the content of the emails into the filtering code.</p>
+
+<p>I understand that people run their own email servers and I assume there are some python packages to do that. But it seems a waste to be running a server when I only receive the job emails infrequently. Instead it sounded like a good use case for a serverless approach. I’d like to have a function ‘wake up’, filter an email, and then power-down again.</p>
+
+<p>AWS’s Lambda seemed a reasonable place to start². But I’ll still need a way to trigger a Lambda function on receipt of an email. Sure enough, AWS have a service for that. It’s called the Simple Email Service (SES).</p>
+
+<blockquote>
+<p>“When you use Amazon SES to receive messages, you can configure Amazon SES to call your Lambda function when messages arrive.” — AWS Documentation</p>
+</blockquote>
+
+<p>Perfect! I started reading around creating Lambda functions and using SES, following the <a href="https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-getting-started.html">Receiving Email Getting Started Guide</a>. There are few admin steps to get through with SES. First, you have to <a href="https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-getting-started-verify.html">verify that you own the domain you want to send emails from</a>. Also all new SES accounts start off in a sandbox. This means you can only send emails to an address you have verified. For this project these restrictions don’t matter. I only want to send and receive from one email address, which is my own.</p>
+
+<p>One of the main concepts of SES is <em>receipt rule sets</em>. Receipt rules specify what Amazon SES should do with mail it receives. To get SES to call a Lambda when it received an email, I started following the official documentation. I had imagined that the content of the email would pass to the Lambda. I soon found out that <a href="https://docs.aws.amazon.com/ses/latest/DeveloperGuide/receiving-email-action-lambda-event.html">the body of the incoming email is omitted</a>.</p>
+
+<p>To get the content of the email in a Lambda function we must configure SES to put a copy of the email into an S3 bucket. The Lambda can then fetch the email from S3 using the information provided from SES. I worried that this was becoming complicated.</p>
+
+<p>It was with relief then that I came across this <a href="https://gist.github.com/dkavraal/356dc60f8f6beb8b5070e891adadab96">example</a> by <a href="https://gist.github.com/dkavraal">Dincer Kavraal</a>, which became the backbone of my solution. The parts about setting up Roles are important to get right and it took me a little to get familiar with that. If you step through it carefully yourself it should work. As a result I was able to set up SES and Lambda to receive emails and bounce back a reply.</p>
+
+<p><strong>Shoehorning the filtering code into a Lambda.</strong></p>
+
+<p>So we have a working harness for receiving and sending emails. Now I need to get my email filtering code into that framework. Up to this point I had been editing (or, more accurately, copy/pasting) code directly in the Lambda console.
+It worked well but I knew that my filtering code relied some extra python packages. I would somehow have to bundle these up and push them to the Lambda. And I was a bit lost about that at first.</p>
+
+<p>This is where I found another great help in the form of the <code>python-lambda</code> package. I followed <a href="https://hackersandslackers.com/improve-your-aws-lambda-workflow-with-python-lambda/">these guidelines</a> to install it and set up a new local folder. Then from a fresh pipenv shell I called <code>lambda init</code> to create the following files:</p>
+
+<figure>
+    <img src="/img/portfolio/1_ikBeqYaflPYTRSeb_RY2dw.png"
+         alt="The directory structure created by python-lamda"/> <figcaption>
+            <p>The directory structure created by python-lamda</p>
+        </figcaption>
+</figure>
+
+
+<p>Inside service.py is the all important handler() function that is invoked whenever the <a href="https://docs.aws.amazon.com/lambda/latest/dg/python-programming-model.html">Lambda is called</a>.</p>
+
+<p>So, first I copied Karvaal’s example code into the handler function. Then I could graft in parts of my own email filtering scripts.</p>
+
+<p>The main adaptations to my code were on the plumbing:
+* Use the content fetched from S3 rather than reading an email from a file
+* Use the <code>boto3</code> API to package up and send an email rather than the standard python <code>email</code> package.</p>
+
+<p>The full code is available on <a href="https://github.com/wooduk/lifilter">Github</a>.</p>
+
+<p>The beauty of <code>python-lambda</code> is that after setting up the <code>config.yaml</code> file I could simply deploy this code to AWS. Either directly (<code>lambda deploy</code>), via S3 (<code>lambda deploy-s3</code>) or creating a zip to be uploaded by hand (<code>lambda build</code>). On choosing one of these options <code>python-lambda</code> bundles up all of the source code and packages into a zip file. The <code>build</code> option makes this a little more transparent because it creates a directory called <code>dist/</code> and puts the zip file in there. I was pleasantly surprised at how easy this made it.</p>
+
+<h2 id="task-5-forward-some-alert-emails-to-ses">Task 5. Forward some alert emails to SES.</h2>
+
+<p>So with code bundled and deployed I was ready to forward emails to my new service. How exciting! But then… how disappointing! At first I received no job alerts back. The main parts of the machinery seemed to be working. My forwarded email was received and a reply sent back. It just didn’t have any jobs in it.</p>
+
+<p>This was the gotcha I described earlier where by Gmail doesn’t forward the raw email that we looked at originally and instead sends a pre-processing version. I tweaked the email parser using regular expressions and tried again. This time it worked and it was quite satisfying to see.</p>
+
+<figure>
+    <img src="/img/portfolio/1_q7wzyj1lt62OvJJKw34bpA.png"
+         alt="Job alerts filtered by the language of the description in my inbox."/> <figcaption>
+            <p>Job alerts filtered by the language of the description in my inbox.</p>
+        </figcaption>
+</figure>
+
+
+<p>Task 6. Bask in glory.</p>
+
+<figure>
+    <img src="/img/portfolio/1_V9aELtX8XElqME9z-4rPwA.png"
+         alt="There was probably an easier way!"/> <figcaption>
+            <p>There was probably an easier way!</p>
+        </figcaption>
+</figure>
+
+
+<p>Using the examples of others I was able to pull this together in a relatively short time. Given I hadn’t used SES or Lambda before I was surprised how easy it seemed. I have to admit that it was not entirely without headaches though. I found configuring permissions for AWS services to talk to each other got a bit tricky. And sometimes the AWS documentation feels like it’s driving you in circles. Thanks to <a href="https://gist.github.com/dkavraal">Dincer Kavraal</a> and <a href="https://hackersandslackers.com/improve-your-aws-lambda-workflow-with-python-lambda/">Todd Birchard</a> for their examples that got me on my way.</p>
+
+<p>Already the basic framework for receive, trigger filter, send created here has come in useful on another side project.</p>
+
+<h2 id="notes">Notes</h2>
+
+<p>[1] Yes, I’m waiting for it to be pointed out how obvious it is to filter by language, but I wanted a side project.
+[2] I’m not advocating AWS over Google Cloud or Microsoft Azure, I just looked there first and found what I wanted.</p>
+         
+      </div>
+    </div>
+  </div>
+</div>
+
+          </div>
+      </div>
+  </div>
+  <script src="https://wooduk.github.io/js/jquery.min.js"></script>
+<script src="https://wooduk.github.io/js/bootstrap.min.js"></script>
+<script src="https://wooduk.github.io/js/jquery.cookie.js"> </script>
+<script src="https://wooduk.github.io/js/ekko-lightbox.js"></script>
+<script src="https://wooduk.github.io/js/jquery.scrollTo.min.js"></script>
+<script src="https://wooduk.github.io/js/masonry.pkgd.min.js"></script>
+<script src="https://wooduk.github.io/js/imagesloaded.pkgd.min.js"></script>
+<script src="https://wooduk.github.io/js/owl.carousel.min.js"></script>
+<script src="https://wooduk.github.io/js/front.js"></script>
+
+
+
+</body>
+</html>

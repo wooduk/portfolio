@@ -1,0 +1,14 @@
+.content-column-content p,
+.content-column-content li {
+  color: #222222;
+  font-family: "Iowan Old Style","Garamond",Arial, sans-serif;
+}
+
+figcaption {
+  text-align: center;
+  font-size: 0.9em;
+}
+
+h2 {
+    margin-top: 2em;
+}
