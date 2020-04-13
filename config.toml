@@ -22,6 +22,10 @@ sidebarAbout = [
   home = true
 
   [[params.navlinks]]
+  name = "Snippets"
+  url = "snippets/"
+
+  [[params.navlinks]]
   name = "About"
   url = "about/"
 
